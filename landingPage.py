@@ -4,6 +4,7 @@ import numpy as np
 import pydeck as pdk
 from datetime import datetime, timedelta
 
+
 # Page config - MUST BE FIRST
 st.set_page_config(
     page_title="ForestGuard - Wildfire Detection",
@@ -232,7 +233,7 @@ try:
                 layers=[layer],
                 initial_view_state=view_state,
                 tooltip=tooltip,
-                map_style='mapbox://styles/mapbox/dark-v10',
+                map_style=None,
             )
             
             st.pydeck_chart(deck, use_container_width=True)
