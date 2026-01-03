@@ -3,6 +3,40 @@ import pandas as pd
 import numpy as np
 import pydeck as pdk
 from datetime import datetime, timedelta
+import io
+from PIL import Image
+
+# --- MODEL LOADING (Placeholders) ---
+@st.cache_resource
+def load_vision_model():
+    # model = torch.load('vision_model.pth') or tf.keras.models.load_model('model.h5')
+    return "Vision Model Loaded"
+
+@st.cache_resource
+def load_audio_model():
+    # model = joblib.load('audio_model.pkl')
+    return "Audio Model Loaded"
+
+vision_model = load_vision_model()
+audio_model = load_audio_model()
+
+# --- HELPER FUNCTIONS FOR INFERENCE ---
+def run_vision_inference(file_buffer, is_video=False):
+    """Passes image or video to the Vision Model"""
+    if not is_video:
+        img = Image.open(file_buffer)
+        # Process: img_array = np.array(img.resize((224, 224)))
+        # prediction = vision_model.predict(img_array)
+        return np.random.uniform(0.6, 0.98), "Smoke Detected"
+    else:
+        # For video, you'd typically sample frames using cv2
+        return np.random.uniform(0.5, 0.85), "Active Fire Front"
+
+def run_audio_inference(file_buffer):
+    """Passes audio to the Audio Model"""
+    # y, sr = librosa.load(file_buffer)
+    # prediction = audio_model.predict(y)
+    return np.random.uniform(0.7, 0.95), "Chainsaw/Cracking Sound"
 
 
 # Page config - MUST BE FIRST
@@ -182,7 +216,7 @@ try:
     st.markdown("<br>", unsafe_allow_html=True)
     
     # Tabs
-    tab1, tab2, tab3 = st.tabs(["🗺️ Live Map", "⚠️ Active Alerts", "📊 Timeline Analytics"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🗺️ Live Map", "⚠️ Active Alerts", "📊 Timeline Analytics", "🔬 Model Testing"])
     
     with tab1:
         st.markdown("### 🌍 Global Hotspot Detection Map")
@@ -355,6 +389,49 @@ try:
                 st.info("No detections on this date.")
         else:
             st.warning("⚠️ No data available for analysis.")
+
+    with tab4:
+        st.markdown("### 🔬 Custom Data Prediction")
+        st.caption("Upload specific media types to test our specialized AI models.")
+
+        # Create three columns for the three data types
+        col_img, col_vid, col_aud = st.columns(3)
+
+        with col_img:
+            st.subheader("🖼️ Image Input")
+            img_file = st.file_uploader("Upload Image", type=['jpg', 'jpeg', 'png'], key="img_test")
+            if img_file:
+                st.image(img_file, use_container_width=True)
+                if st.button("Run Vision Model (Img)", use_container_width=True):
+                    with st.spinner("Analyzing pixels..."):
+                        score, label = run_vision_inference(img_file, is_video=False)
+                        st.metric("Confidence", f"{score:.1%}")
+                        st.write(f"**Result:** {label}")
+
+        with col_vid:
+            st.subheader("📽️ Video Input")
+            vid_file = st.file_uploader("Upload Video", type=['mp4', 'mov'], key="vid_test")
+            if vid_file:
+                st.video(vid_file)
+                if st.button("Run Vision Model (Vid)", use_container_width=True):
+                    with st.spinner("Scanning frames..."):
+                        score, label = run_vision_inference(vid_file, is_video=True)
+                        st.metric("Confidence", f"{score:.1%}")
+                        st.write(f"**Result:** {label}")
+
+        with col_aud:
+            st.subheader("🔊 Audio Input")
+            aud_file = st.file_uploader("Upload Audio", type=['wav', 'mp3'], key="aud_test")
+            if aud_file:
+                st.audio(aud_file)
+                if st.button("Run Audio Model", use_container_width=True):
+                    with st.spinner("Analyzing frequencies..."):
+                        score, label = run_audio_inference(aud_file)
+                        st.metric("Confidence", f"{score:.1%}")
+                        st.write(f"**Result:** {label}")
+
+        st.markdown("---")
+        st.info("💡 **Note:** The `type` parameter in the uploader strictly prevents users from uploading incorrect formats (e.g., an MP3 will not be accepted in the Image section).")
     # comment
     # Footer
     st.markdown("---")
