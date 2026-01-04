@@ -54,15 +54,17 @@ def run_vision_inference(file_buffer, is_video=False):
 import numpy as np
 
 def run_audio_inference(file_buffer):
-
     class_names = ['natural sound', 'unnatural']
 
-    # Get preprocessed audio spectrogram
+    # 1. Get image in 0-255 range
     img_ready, y_raw, sr = for_single_audio(file_buffer)
-    # img_ready is already (1, 128, 1000, 3) - ready for prediction!
 
-# Binary detection
-    y_pred1 = audio_model1.predict(img_ready)
+# EfficientNet specific preprocessing (Handles mean/std subtraction)
+    img_for_model = preprocess_input(img_ready)
+
+    # 3. Predict
+    y_pred1 = audio_model1.predict(img_for_model)
+
     confidence = float(y_pred1[0][0])
     class_index = int(confidence > 0.5)
     label = class_names[class_index]
