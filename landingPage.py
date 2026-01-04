@@ -31,8 +31,8 @@ def load_vision_model():
 @st.cache_resource
 def load_audio_model():
     audio_model1 = tf.keras.models.load_model('./models/audio_forest_69.keras', custom_objects=custom_dict)
-    # audio_model2 = tf.keras.models.load_model('./models/audio_multi_classification.keras', custom_objects=custom_dict)
-    return (audio_model1, 'audio_model2')
+    audio_model2 = tf.keras.models.load_model('./models/audio_forest_69420.keras', custom_objects=custom_dict)
+    return (audio_model1, audio_model2)
 
 
 
@@ -55,6 +55,7 @@ import numpy as np
 
 def run_audio_inference(file_buffer):
     class_names = ['natural sound', 'unnatural']
+    class_names2 = ['fire', 'logging', 'poaching']
 
     # 1. Get image in 0-255 range
     img_ready, y_raw, sr = for_single_audio(file_buffer)
@@ -70,6 +71,22 @@ def run_audio_inference(file_buffer):
     label = class_names[class_index]
 
     confidence = confidence if class_index == 1 else (1 - confidence)
+
+    if confidence > 0.5:
+        # 1. Get the full probability distribution
+        y_pred2 = audio_model2.predict(img_for_model)
+        
+        # 2. Find the index of the highest probability
+        # y_pred2[0] is used assuming batch size of 1
+        class_index2 = np.argmax(y_pred2[0])
+        
+        # 3. Extract the actual probability (confidence) for that class
+        confidence2 = float(y_pred2[0][class_index2])
+        
+        # 4. Map to label and update the confidence variable
+        label = class_names2[class_index2]
+        confidence = confidence2
+    
 
     return confidence, label
 
