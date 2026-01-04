@@ -1,4 +1,4 @@
-﻿# 🔥 ForestGuard - AI-Powered Forest Conservation System
+﻿# 🔥 VanaRakshya - AI-Powered Forest Conservation System
 An intelligent web application for forest rangers and officials to detect and monitor wildfires, illegal logging and poaching in real-time using NASA satellite data, drone imagery, and machine learning.
 
 ---
@@ -271,3 +271,4 @@ pip install pydeck
 # Check if PyDeck is working
 
 python -c "import pyde
+
