@@ -54,6 +54,9 @@ def run_vision_inference(file_buffer, is_video=False):
 import numpy as np
 
 def run_audio_inference(file_buffer):
+
+    class_names = ['natural sound', 'unnatural']
+
     # Get preprocessed audio spectrogram
     img_ready, y_raw, sr = for_single_audio(file_buffer)
     # img_ready is already (1, 128, 1000, 3) - ready for prediction!
@@ -61,11 +64,10 @@ def run_audio_inference(file_buffer):
 # Binary detection
     y_pred1 = audio_model1.predict(img_ready)
     confidence = float(y_pred1[0][0])
-    label = "natural"
+    class_index = int(confidence > 0.5)
+    label = class_names[class_index]
 
-    # Classification if threshold met
-    if confidence > 0.5:
-        label = "forest_threat_detected"
+    confidence = confidence if class_index == 1 else (1 - confidence)
 
     return confidence, label
 
