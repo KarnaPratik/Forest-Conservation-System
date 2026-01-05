@@ -20,7 +20,7 @@ from PIL import Image
 #import librosa
 import cv2
 import sqlite3
-
+import requests
 from audio_to_img import for_single_audio
 
 #Database Helper Functions
@@ -99,78 +99,78 @@ vision_model = load_vision_model()
 audio_model1, audio_model2 = load_audio_model()
 
 # --- HELPER FUNCTIONS FOR INFERENCE ---
-def run_vision_inference(file_buffer, is_video=False):
-    if not is_video:
-        #loading the image from the buffer
-        img = Image.open(file_buffer)
-        img_array = np.array(img)
-        
-        # Runing the actual YOLO model prediction
-        results = vision_model.predict(source=img_array,imgsz=800, rect=False, conf=0.35, augment=True)
-        
-        #creating image with boxes and labels
+
+def run_vision_inference(file_buffer=None, is_video=False, FRAME_ARRAY=None):
+    # --- 1. LIVE FRAME LOGIC (Direct from OpenCV) ---
+    if FRAME_ARRAY is not None:
+        results = vision_model.predict(source=FRAME_ARRAY, imgsz=640, conf=0.35, verbose=False)
         annotated_img = results[0].plot()
         annotated_rgb = cv2.cvtColor(annotated_img, cv2.COLOR_BGR2RGB)
 
-        # Check if anything was detected
         if len(results[0].boxes) > 0:
-            # Extract the top detected class and its confidence score
             conf = float(results[0].boxes[0].conf[0])
-            cls_id = int(results[0].boxes[0].cls[0])
-            label = results[0].names[cls_id]
+            label = results[0].names[int(results[0].boxes[0].cls[0])]
             return conf, label, annotated_rgb
-        else:
-            return 0.0, "No detection", annotated_rgb
-    else:
-        #videoAADlogic
-        #a physical file is needed for OpenCV to read it, so buffer is saved temporarily
+        return 0.0, "No detection", annotated_rgb
+
+    # --- 2. IMAGE UPLOAD LOGIC ---
+    elif not is_video and file_buffer is not None:
+        img = Image.open(file_buffer)
+        img_array = np.array(img)
+        results = vision_model.predict(source=img_array, imgsz=800, conf=0.35)
+        annotated_img = results[0].plot()
+        annotated_rgb = cv2.cvtColor(annotated_img, cv2.COLOR_BGR2RGB)
+        
+        if len(results[0].boxes) > 0:
+            conf = float(results[0].boxes[0].conf[0])
+            label = results[0].names[int(results[0].boxes[0].cls[0])]
+            return conf, label, annotated_rgb
+        return 0.0, "No detection", annotated_rgb
+
+    # --- 3. VIDEO FILE LOGIC (Corrected Structure) ---
+    elif is_video and file_buffer is not None:
         import tempfile
         import os 
-        import gc # garbage collector to force-release file locks
+        import gc
 
+        # Create temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tfile:
-            tfile.write(file_buffer.read()) #data goes to buffer
-            tfile.close() #data is pushed to disk and thus, lock is released
-            temp_path = tfile.name #grabbing the name so we can find it later
+            tfile.write(file_buffer.read())
+            temp_path = tfile.name
         
         try:
-            st_frame = st.empty() #st_frame is for updating frames in real time
+            st_frame = st.empty() 
             highest_conf = 0.0
             top_label = "Scanning..."
 
-            #using stream=True for processing frame-by-frame without CRASHING THE F OUTTA MEMORY
+            # stream=True prevents memory overflow on large files
             results = vision_model.predict(source=temp_path, stream=True, conf=0.25)
 
             for result in results: 
-                #frame is converted to RGB for display in Streamlit
                 frame = result.plot()
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-                #updating the ui placeholder with current PROCESSED FRAME
                 st_frame.image(frame_rgb, channels="RGB", use_container_width=True)
 
-                #most confidence detection found in the whole video is tracked
-                if len(result.boxes)>0:
+                if len(result.boxes) > 0:
                     current_conf = float(result.boxes[0].conf[0])
                     if current_conf > highest_conf:
                         highest_conf = current_conf
-                        top_cls_id = int(result.boxes[0].cls[0])
-                        top_label = result.names[top_cls_id]
+                        top_label = result.names[int(result.boxes[0].cls[0])]
             
-            #explicitly deleting the generator and forcing garbage collection
-            #releasing the lock YOLO has on the .mp4 file
+            # Releasing memory locks
             del results
             gc.collect()
-
-
             return highest_conf, top_label, None
+
         finally:
-            #cleaning up: manually deleting the temp file after processing
+            # THIS IS THE CLEANUP YOU NEEDED
             if os.path.exists(temp_path):
                 try:
                     os.remove(temp_path)
                 except Exception as e:
                     print(f"Cleanup error: {e}")
+    
+    return 0.0, "Invalid Input", None
 
 
 def run_audio_inference(file_buffer):
@@ -425,7 +425,7 @@ try:
 
     
     # Tabs
-    tab1, tab2, tab3, tab4 = st.tabs(["🗺️ Live Map", "⚠️ Active Alerts", "📊 Timeline Analytics", "🔬 Model Testing"])
+    tab1, tab2, tab3, tab4,tab5 = st.tabs(["🗺️ Live Map", "⚠️ Active Alerts", "📊 Timeline Analytics", "🔬 Model Testing","🛰️ Live Monitoring"])
     
     with tab1:
         st.markdown("### 🌍 Global Hotspot Detection Map")
@@ -654,6 +654,40 @@ try:
                             st.error(f"⚠️ {label.upper()} DETECTED! Alerting Rangers.")
                         else:
                             st.write(f"**Result:** {label}")
+    with tab5:
+        st.header("Live AI Surveillance")
+        
+        # Connection Interface
+        st.info("Enter the IP address of your camera to start the AI stream.")
+        
+        col_ip, col_port, col_btn = st.columns([3, 1, 1])
+        
+        with col_ip:
+            ip_addr = st.text_input("IP Address", placeholder="192.168.1.10")
+        with col_port:
+            port_num = st.text_input("Port", value="8080")
+        with col_btn:
+            st.write("##") # Align button with inputs
+            if st.button("Connect", use_container_width=True):
+                full_ip = f"{ip_addr}:{port_num}"
+                try:
+                    # Tell Flask to switch to this new camera IP
+                    resp = requests.post("http://localhost:5000/setting_camera", json={"ip": full_ip})
+                    if resp.status_code == 200:
+                        st.success("Camera Link Established!")
+                    else:
+                        st.error("Flask rejected the IP format.")
+                except:
+                    st.error("Error: Flask server is not running on port 5000.")
+
+        # Video Feed Display
+        st.divider()
+        # Flask serves the MJPEG stream at this URL
+        flask_url = "http://localhost:5000/video_feed"
+        
+        # st.image handles the MJPEG stream automatically
+        st.image(flask_url, caption="Real-time Detection Feed", use_container_width=True)
+    
         st.markdown("---")
         st.info("💡 **Note:** The `type` parameter in the uploader strictly prevents users from uploading incorrect formats (e.g., an MP3 will not be accepted in the Image section).")
     # comment
