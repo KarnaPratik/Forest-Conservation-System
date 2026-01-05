@@ -56,6 +56,7 @@ pip-delete-this-directory.txt
 .DS_Store
 Thumbs.db
 
-.\environment_older_version
-.\environment_for_hackaweek
+.venv/
+venv/
 
+environment_py310

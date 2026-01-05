@@ -90,12 +90,12 @@ def give_video():
     #we connect browser here to run the function
     return Response(
         generate_frame(),
-        mimetype="multipart/x-mixed-replace;boundary=frame" #here mimetype tells its gonna be multiple frames you gotta replace everytime and use frames as the boundary
+        mimetype="multipart/x-mixed-replace; boundary=frame" #here mimetype tells its gonna be multiple frames you gotta replace everytime and use frames as the boundary
 
     )
 
 if __name__=="__main__":
-    app.run(host="0.0.0.0",port=5000,threaded=True)
+    app.run(host="0.0.0.0",port=1234,threaded=True)
 
 
 
