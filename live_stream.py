@@ -8,7 +8,12 @@ from inference_engine import run_vision_inference,run_audio_inference
 cap=None
 video_url=None
 lock=threading.Lock() #to stop any livestreams simultaneously
-
+audio_prediction="0"
+audio_label="Analysing sound..."
+conf=0
+label="Analysing Video"
+combined_pred=0
+combined_label="Analysing"
 
 app=Flask(__name__)
 
@@ -38,13 +43,47 @@ def set_camera(): #this function will be used to get the ip address after the us
 
     return jsonify({"status":"Connected!","ip":real_ip})
 
+def get_audio_inference():
+    global audio_prediction, audio_label,video_url
+
+
+    audio_url=f"http://{video_url}/audio.wav"
+
+    while True:
+        try:
+            with request.get(audio_url,stream=True,timeout=5) as r:
+                audio_buffer=io.BytesIO()
+                first_time=time.time()
+
+                for chunk in r.iter_content(chunk_size=1024):
+                    audio_buffer.write(chunk)
+                    if time.time()-first_time>3:
+                        break
+
+                audio_buffer.seek(0) #this makes sure when inference runs it points back to the starting
+                audio_label,audio_prediction=run_audio_inference(FRAME_ARRAY=audio_buffer)
+
+                with lock:
+                    update_threat_logic()
+        except:
+            print("Audio_error")
+            time.sleep(2)
+
+def update_threat_logic():
+    global audio_prediction, audio_label, label,conf
+
+
+
+
+
+
 
 # now we generate frames of the videos and run the backend logic of inference and everything
 def generate_frame():
     """
     this will generate all the videos and run inference from the model 
     """
-    global cap
+    global cap,conf,label
     
 
 
@@ -90,9 +129,17 @@ def give_video():
     #we connect browser here to run the function
     return Response(
         generate_frame(),
-        mimetype="multipart/x-mixed-replace;boundary=frame" #here mimetype tells its gonna be multiple frames you gotta replace everytime and use frames as the boundary
+        mimetype="multipart/x-mixed-replace; boundary=frame" #here mimetype tells its gonna be multiple frames you gotta replace everytime and use frames as the boundary
 
     )
+
+@app.route("/combined_pred",methods=["GET"])
+def combined_pred():
+    global combined_label,combined_pred
+    return jsonify({
+        "Combined_prediction":combined_pred,
+        "Combined_label": combined_label
+    })
 
 if __name__=="__main__":
     app.run(host="0.0.0.0",port=5000,threaded=True)

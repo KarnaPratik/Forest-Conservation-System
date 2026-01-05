@@ -118,3 +118,4 @@ def run_audio_inference(file_buffer):
         final_conf = float(y_pred2[0][class_index2])
     
     return final_conf, label
+
