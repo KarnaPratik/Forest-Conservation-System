@@ -33,7 +33,7 @@ def set_camera(): #this function will be used to get the ip address after the us
     video_url=data.get("ip")
 
 
-    if not ip:
+    if not video_url:
         return jsonify({"error":"No Ip address has been sent!"})
     
     real_ip=f"http://{video_url}/video"
