@@ -70,7 +70,8 @@ def get_audio_inference():
             time.sleep(2)
 
 def update_threat_logic():
-    global audio_prediction, audio_label, label,conf
+    global audio_prediction, audio_label, label,conf,combined_pred,combined_label
+
 
 
 
@@ -142,7 +143,7 @@ def combined_pred():
     })
 
 if __name__=="__main__":
-    app.run(host="0.0.0.0",port=5000,threaded=True)
+    app.run(host="0.0.0.0",port=1234,threaded=True)
 
 
 

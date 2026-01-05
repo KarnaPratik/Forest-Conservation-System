@@ -672,7 +672,7 @@ try:
                 full_ip = f"{ip_addr}:{port_num}"
                 try:
                     # Tell Flask to switch to this new camera IP
-                    resp = requests.post("http://localhost:5000/setting_camera", json={"ip": full_ip})
+                    resp = requests.post("http://localhost:1234/setting_camera", json={"ip": full_ip})
                     if resp.status_code == 200:
                         st.success("Camera Link Established!")
                     else:
@@ -683,7 +683,7 @@ try:
         # Video Feed Display
         st.divider()
         # Flask serves the MJPEG stream at this URL
-        flask_url = "http://localhost:5000/video_feed"
+        flask_url = "http://localhost:1234/video_feed"
         
         # st.image handles the MJPEG stream automatically
         st.image(flask_url, caption="Real-time Detection Feed", use_container_width=True)

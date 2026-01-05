@@ -8,6 +8,24 @@ from ultralytics import YOLO
 from PIL import Image
 from keras.applications.efficientnet import preprocess_input
 from audio_to_img import for_single_audio
+import time
+import sqlite3
+
+# --- 0. ESTABLISH DATABASE CONNECTION ---
+def log_detection_to_db(source, inc_type, conf, lat, lon, region):
+    try:
+        # Use a local connection inside the function for thread safety in Flask
+        conn = sqlite3.connect('vanarakshya.db', check_same_thread=False)
+        c = conn.cursor()
+        c.execute('''INSERT INTO alerts (source, incident_type, confidence, latitude, longitude, region)
+                     VALUES (?, ?, ?, ?, ?, ?)''', (source, inc_type, conf, lat, lon, region))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Database Error: {e}")
+
+# Global tracker to prevent duplicate logs (e.g., log once every 30 seconds per type)
+last_log_times = {}
 
 # --- 1. CONFIGURATION & MODELS ---
 custom_dict = {'preprocess_input': preprocess_input}
@@ -43,6 +61,22 @@ def run_vision_inference(file_buffer=None, is_video=False, FRAME_ARRAY=None):
         if len(results[0].boxes) > 0:
             conf = float(results[0].boxes[0].conf[0])
             label = results[0].names[int(results[0].boxes[0].cls[0])]
+    
+    #To log the detected issue in the firebase
+            if conf > 0.5:
+                    current_time = time.time()
+                    # Only log if we haven't logged this type of incident in the last 30 seconds
+                    if label not in last_log_times or (current_time - last_log_times[label] > 30):
+                        log_detection_to_db(
+                            source="Drone Live Feed",
+                            inc_type=label.capitalize(),
+                            conf=conf,
+                            lat=29.11,  # You can pass real GPS here later
+                            lon=82.94, 
+                            region="Test Region"
+                        )
+                        last_log_times[label] = current_time
+            
             return conf, label, annotated_rgb
         return 0.0, "No detection", annotated_rgb
 
