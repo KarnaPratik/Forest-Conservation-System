@@ -22,7 +22,7 @@ Aadim Sapkota
 - Prioritized list of most severe fires
 - Detailed fire metrics (brightness, confidence, coordinates)
 - One-click alert deployment to ranger stations
-- Comprehensive fire intelligence cards
+- Comprehensive fire intelligence cards, alerts for poaching and illegal logging
 
 ### 📊 **Timeline Analytics**
 - Historical fire activity tracking
@@ -271,5 +271,6 @@ pip install pydeck
 # Check if PyDeck is working
 
 python -c "import pyde
+
 
 
