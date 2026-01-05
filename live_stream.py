@@ -42,7 +42,7 @@ def generate_frame():
     this will generate all the videos and run inference from the model 
     """
     global cap
-    from landingPage import run_vision_inference
+    from inference_engine import run_vision_inference
 
 
     #run the loop infinitely
@@ -58,8 +58,8 @@ def generate_frame():
 
             conf,label,annotated=run_vision_inference(FRAME_ARRAY=frame)
             cv2.putText(
-            annotated,
-            f"{label} {conf:.2f}",
+            frame,
+            f"{label},{conf:.2f}",
             (20, 40),
             cv2.FONT_HERSHEY_SIMPLEX,
             1,
@@ -74,7 +74,7 @@ def generate_frame():
 
             #now we yield or produce those frames in the browser till it is connected
             #yield function acts as a generator and keeps on sending images everytime
-            yield(
+        yield(
                 b"--frame\r\n" #this tells browser that previous streaming has been over where b is for specifiying its bytes r is telling to move cursor back and n is for new line
                 b"Content-Type: image/jpeg\r\n\r\n"+frame_bytes+b"\r\n"
 
