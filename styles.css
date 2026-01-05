@@ -1,0 +1,104 @@
+/* =========================
+   1. GLOBAL BACKGROUND & CANVAS
+========================= */
+.stApp {
+    background-color: #e8e6d9 !important; /* Muted Moss-Beige */
+}
+
+/* Force all main-area text to be a deep olive charcoal for visibility */
+.stApp, p, span, div, label, li {
+    color: #2c3327 !important;
+    font-family: 'Inter', -apple-system, sans-serif;
+}
+
+/* =========================
+   2. SIDEBAR (Deep Forest Moss)
+========================= */
+[data-testid="stSidebar"] {
+    background-color: #3a4d39 !important; /* Deep Forest Green */
+    border-right: 1px solid #2d3e30;
+}
+
+/* Sidebar Text visibility (Light Sage/Cream for dark background) */
+[data-testid="stSidebar"] .stMarkdown p, 
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {
+    color: #f1f0e8 !important; /* Cream text */
+}
+
+/* =========================
+   3. STAT BOXES (Clean Cards)
+========================= */
+.stat-box {
+    background: #fcfbf7 !important; /* Off-white linen */
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(44, 51, 39, 0.08); /* Dark olive shadow */
+    border-top: 5px solid #d65a31; /* Terracotta alert from your image */
+    text-align: left;
+}
+
+.stat-number {
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: #2c3327 !important;
+    margin: 0;
+}
+
+.stat-label {
+    color: #5c6b54 !important; /* Sage Grey */
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+/* =========================
+   4. TABS (Earthy Navigation)
+========================= */
+.stTabs [data-baseweb="tab-list"] {
+    background-color: transparent;
+    border-bottom: 1px solid #c9c5b4;
+}
+
+.stTabs [data-baseweb="tab-list"] button {
+    color: #5c6b54 !important;
+    font-weight: 500;
+    background: transparent !important;
+}
+
+.stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
+    color: #3a4d39 !important; /* Dark forest focus */
+    border-bottom: 3px solid #3a4d39 !important;
+}
+
+/* =========================
+   5. WIDGET & BUTTON STYLING
+========================= */
+/* Ensure input sliders and text are visible */
+.stSlider label, .stSelectbox label, .stMultiSelect label {
+    color: #2c3327 !important;
+}
+
+.stButton > button {
+    background-color: #4f6f52 !important; /* Muted Sage Button */
+    color: #f1f0e8 !important;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.stButton > button:hover {
+    background-color: #3a4d39 !important;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+/* Adjust dataframes for better visibility on moss bg */
+[data-testid="stDataFrame"] {
+    background: #fcfbf7 !important;
+    border-radius: 10px;
+    padding: 10px;
+}

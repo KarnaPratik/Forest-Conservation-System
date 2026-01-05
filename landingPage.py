@@ -1,4 +1,4 @@
-from tensorflow.keras.applications.efficientnet import preprocess_input
+from keras.applications.efficientnet import preprocess_input
 import keras
 from ultralytics import YOLO
 import os
@@ -50,7 +50,7 @@ def run_vision_inference(file_buffer, is_video=False):
         img_array = np.array(img)
         
         # Runing the actual YOLO model prediction
-        results = vision_model.predict(source=img_array,imgsz=800, conf=0.25, augment=True)
+        results = vision_model.predict(source=img_array,imgsz=800, rect=False, conf=0.25, augment=True)
         
         #creating image with boxes and labels
         annotated_img = results[0].plot()
@@ -106,6 +106,11 @@ def run_audio_inference(file_buffer):
 
     return confidence, label
 
+#Separate CSS file definition
+def local_css(file_name):
+    with open(file_name) as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
 # Page config - MUST BE FIRST
 st.set_page_config(
     page_title="VanaRakshya",
@@ -114,41 +119,8 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: 700;
-        color: #1f2937;
-        margin-bottom: 0.5rem;
-    }
-    .sub-header {
-        font-size: 1.1rem;
-        color: #6b7280;
-        margin-bottom: 2rem;
-    }
-    .stat-box {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        border-left: 4px solid #ef4444;
-        text-align: center;
-    }
-    .stat-number {
-        font-size: 2.5rem;
-        font-weight: 700;
-        color: #dc2626;
-        margin: 0;
-    }
-    .stat-label {
-        color: #6b7280;
-        font-size: 0.9rem;
-        margin-top: 0.25rem;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Custom CSS Load
+local_css("styles.css")
 
 # Generate mock data
 def generate_mock_fire_data(days_back=7):
@@ -200,7 +172,7 @@ def get_severity(brightness):
     elif brightness >= 340:
         return "MEDIUM", "#f59e0b"
     else:
-        return "LOW", "#10b981"
+        return "LOW", "#528b3a"
 
 # Sidebar
 with st.sidebar:
@@ -327,7 +299,7 @@ try:
                         "<b>Confidence:</b> {confidence}%<br/>"
                         "<b>Severity:</b> {severity}<br/>"
                         "<b>Time:</b> {acq_date} {acq_time}",
-                "style": {"backgroundColor": "#1f2937", "color": "white", "padding": "10px"}
+                "style": {"backgroundColor": "#2d5016", "color": "white", "padding": "10px"}
             }
             
             deck = pdk.Deck(
@@ -365,28 +337,28 @@ try:
                 
                 with st.container():
                     st.markdown(f"""
-                    <div style='background: white; padding: 1.2rem; border-radius: 10px; margin: 0.8rem 0; 
-                                border-left: 5px solid {color}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                    <div style='background: #f0f7ed; padding: 1.2rem; border-radius: 10px; margin: 0.8rem 0; 
+                                border-left: 5px solid {color}; box-shadow: 0 2px 4px rgba(45,80,22,0.15);'>
                         <div style='display: flex; justify-content: space-between; align-items: start;'>
                             <div style='flex: 1;'>
-                                <h4 style='margin: 0 0 0.5rem 0; color: #1f2937; font-size: 1.1rem;'>
+                                <h4 style='margin: 0 0 0.5rem 0; color: #2d5016; font-size: 1.1rem;'>
                                     📍 {row['region']}
                                 </h4>
-                                <p style='margin: 0; color: #6b7280; font-size: 0.9rem;'>
+                                <p style='margin: 0; color: #5a7a52; font-size: 0.9rem;'>
                                     🕐 Detected: {row['acq_date']} at {row['acq_time']} UTC
                                 </p>
                                 <div style='margin-top: 1rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;'>
                                     <div>
-                                        <div style='color: #9ca3af; font-size: 0.8rem; margin-bottom: 0.25rem;'>Brightness</div>
-                                        <div style='font-weight: 600; color: #1f2937; font-size: 1.1rem;'>{row['brightness']:.1f}K</div>
+                                        <div style='color: #6b8e5f; font-size: 0.8rem; margin-bottom: 0.25rem;'>Brightness</div>
+                                        <div style='font-weight: 600; color: #2d5016; font-size: 1.1rem;'>{row['brightness']:.1f}K</div>
                                     </div>
                                     <div>
-                                        <div style='color: #9ca3af; font-size: 0.8rem; margin-bottom: 0.25rem;'>Confidence</div>
-                                        <div style='font-weight: 600; color: #1f2937; font-size: 1.1rem;'>{row['confidence']}%</div>
+                                        <div style='color: #6b8e5f; font-size: 0.8rem; margin-bottom: 0.25rem;'>Confidence</div>
+                                        <div style='font-weight: 600; color: #2d5016; font-size: 1.1rem;'>{row['confidence']}%</div>
                                     </div>
                                     <div>
-                                        <div style='color: #9ca3af; font-size: 0.8rem; margin-bottom: 0.25rem;'>Coordinates</div>
-                                        <div style='font-weight: 600; color: #1f2937; font-size: 0.9rem;'>{row['latitude']:.3f}°, {row['longitude']:.3f}°</div>
+                                        <div style='color: #6b8e5f; font-size: 0.8rem; margin-bottom: 0.25rem;'>Coordinates</div>
+                                        <div style='font-weight: 600; color: #2d5016; font-size: 0.9rem;'>{row['latitude']:.3f}°, {row['longitude']:.3f}°</div>
                                     </div>
                                 </div>
                             </div>
@@ -420,14 +392,14 @@ try:
             timeline = df_filtered.groupby('acq_date').size().reset_index(name='count')
             timeline = timeline.sort_values('acq_date')
             
-            st.line_chart(timeline.set_index('acq_date')['count'], use_container_width=True, color="#dc2626")
+            st.line_chart(timeline.set_index('acq_date')['count'], use_container_width=True, color="#528b3a")
             
             # Regional distribution
             st.markdown("#### Regional Distribution")
             region_counts = df_filtered.groupby('region').size().reset_index(name='count')
             region_counts = region_counts.sort_values('count', ascending=False)
             
-            st.bar_chart(region_counts.set_index('region')['count'], use_container_width=True, color="#ef4444")
+            st.bar_chart(region_counts.set_index('region')['count'], use_container_width=True, color="#6a9955")
             
             # Daily breakdown
             st.markdown("#### 📅 Daily Breakdown")
@@ -508,7 +480,7 @@ try:
     # Footer
     st.markdown("---")
     st.markdown("""
-    <div style='text-align: center; color: #9ca3af; font-size: 0.85rem; padding: 1rem 0;'>
+    <div style='text-align: center; color: #5a7a52; font-size: 0.85rem; padding: 1rem 0;'>
         <p><strong>ForestGuard</strong> • Powered by NASA FIRMS and El Quarters (VIIRS/MODIS) • Data refreshed every 3 hours, hola ig, herya xaina aaile samma</p>
         <p>🌍 Protecting forests through intelligent monitoring</p>
     </div>
