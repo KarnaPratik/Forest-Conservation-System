@@ -5,6 +5,8 @@ import time
 import io
 from inference_engine import run_vision_inference,run_audio_inference
 
+#Local changes
+
 cap = None
 video_url = None
 lock = threading.Lock()
@@ -104,6 +106,3 @@ def give_video():
 
 if __name__=="__main__":
     app.run(host="0.0.0.0",port=1234,threaded=True)
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, threaded=True)
