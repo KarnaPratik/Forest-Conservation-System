@@ -19,10 +19,66 @@ import io
 from PIL import Image
 #import librosa
 import cv2
+import sqlite3
 
 from audio_to_img import for_single_audio
 
-# --- MODEL LOADING (Placeholders) ---
+#Database Helper Functions
+def get_db_connection():
+    # check_same_thread=False allows Streamlit's threads to access the DB safely
+    return sqlite3.connect('vanarakshya.db', check_same_thread=False)
+
+def get_table_df(table_name):
+    """Fetches any table from the DB and returns it as a Pandas DataFrame"""
+    conn = get_db_connection()
+    try:
+        df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
+    except Exception as e:
+        # Returns an empty dataframe if the table doesn't exist yet
+        df = pd.DataFrame()
+    finally:
+        conn.close()
+    return df
+
+def update_alert_status(alert_id, new_status):
+    """Updates the status of an alert (New -> Dispatched -> Resolved)"""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("UPDATE alerts SET status = ? WHERE id = ?", (new_status, alert_id))
+    conn.commit()
+    conn.close()
+
+def log_detection(source, inc_type, conf, lat, lon, region):
+    """Saves a new AI or Satellite detection into the database"""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute('''INSERT INTO alerts (source, incident_type, confidence, latitude, longitude, region)
+                 VALUES (?, ?, ?, ?, ?, ?)''', (source, inc_type, conf, lat, lon, region))
+    conn.commit()
+    conn.close()
+
+def dispatch_ranger(alert_id, lat, lon, name="Ranger Arjun"):
+    """Marks alert as Dispatched and creates a record in the deployments table"""
+    conn = get_db_connection()
+    c = conn.cursor()
+    # 1. Update Alert Status
+    c.execute("UPDATE alerts SET status = 'Dispatched' WHERE id = ?", (alert_id,))
+    # 2. Create Deployment record for the map icon
+    c.execute("INSERT INTO deployments (alert_id, latitude, longitude, ranger_name) VALUES (?, ?, ?, ?)",
+              (alert_id, lat, lon, name))
+    conn.commit()
+    conn.close()
+
+def reset_database():
+    """Wipes all alerts and deployments from the database"""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("DELETE FROM alerts")
+    c.execute("DELETE FROM deployments")
+    conn.commit()
+    conn.close()
+
+# --- MODEL LOADING ---
 @st.cache_resource
 def load_vision_model():
     base_path = os.path.dirname(os.path.abspath(__file__))
@@ -66,8 +122,6 @@ def run_vision_inference(file_buffer, is_video=False):
         else:
             return 0.0, "No detection", annotated_rgb
     return 0.0, "Video mode not configured", None
-
-import numpy as np
 
 def run_audio_inference(file_buffer):
     class_names = ['natural sound', 'unnatural']
@@ -122,6 +176,65 @@ st.set_page_config(
 # Custom CSS Load
 local_css("styles.css")
 
+#Custom fragment code for only the map to rerun everytime along with the database.
+@st.fragment(run_every=10)
+def live_map_fragment(satellite_df):
+    # Fetch real data from DB
+    db_alerts = get_table_df("alerts")
+    deployments = get_table_df("deployments")
+    
+    layers = []
+
+    # LAYER 1: The Mock Satellite Fires (Red)
+    if not satellite_df.empty:
+        layers.append(pdk.Layer(
+            'ScatterplotLayer',
+            data=satellite_df,
+            get_position='[longitude, latitude]',
+            get_color=[220, 38, 38, 120], # Red with transparency
+            get_radius=10000,
+        ))
+
+    # LAYER 2: AI Detections from DB (Purple/Orange)
+    if not db_alerts.empty:
+        layers.append(pdk.Layer(
+            'ScatterplotLayer',
+            data=db_alerts[db_alerts['source'] != 'Satellite'],
+            get_position='[longitude, latitude]',
+            get_color=[180, 0, 255, 160], # Purple for AI
+            get_radius=12000,
+        ))
+
+    # LAYER 3: THE BLUE DOTS (Active Missions)
+    # This will now cover BOTH AI and Satellite hotspots if they are in 'deployments'
+    if not deployments.empty:
+        layers.append(pdk.Layer(
+            'ScatterplotLayer',
+            data=deployments,
+            get_position='[longitude, latitude]',
+            get_color=[0, 150, 255, 255], # Bright Solid Blue
+            get_radius=15000,             # Larger to 'contain' the red dot
+            pickable=True
+        ))
+
+    st.pydeck_chart(pdk.Deck(
+        layers=layers,
+        initial_view_state=pdk.ViewState(latitude=28.1, longitude=84.2, zoom=6.5, pitch=40),
+        map_style='dark'
+    ))
+
+# Safety check to make sure db is ready before app launch
+if 'db_initialized' not in st.session_state:
+    import sqlite3
+    conn = sqlite3.connect('vanarakshya.db')
+    c = conn.cursor()
+    # Create tables if they are missing
+    c.execute('''CREATE TABLE IF NOT EXISTS alerts (id INTEGER PRIMARY KEY AUTOINCREMENT, source TEXT, incident_type TEXT, confidence REAL, latitude REAL, longitude REAL, region TEXT, status TEXT DEFAULT 'New', timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS deployments (id INTEGER PRIMARY KEY AUTOINCREMENT, alert_id INTEGER, latitude REAL, longitude REAL, ranger_name TEXT, status TEXT DEFAULT 'In Transit')''')
+    conn.commit()
+    conn.close()
+    st.session_state['db_initialized'] = True
+
 # Generate mock data
 def generate_mock_fire_data(days_back=7):
     """Generate realistic mock fire data"""
@@ -130,13 +243,13 @@ def generate_mock_fire_data(days_back=7):
     
     # Real fire-prone locations with realistic coordinates
     locations = [
-        {"lat": 38.5816, "lon": -121.4944, "region": "Northern California", "base_brightness": 345},
-        {"lat": 37.2744, "lon": -119.2696, "region": "Sierra Nevada", "base_brightness": 355},
-        {"lat": 34.0522, "lon": -118.2437, "region": "Southern California", "base_brightness": 340},
-        {"lat": -33.8688, "lon": 151.2093, "region": "New South Wales, AU", "base_brightness": 360},
-        {"lat": -3.4653, "lon": -62.2159, "region": "Amazon Rainforest", "base_brightness": 338},
-        {"lat": 40.7128, "lon": -122.4194, "region": "Shasta County, CA", "base_brightness": 350},
-        {"lat": 39.3293, "lon": -120.1833, "region": "Tahoe National Forest", "base_brightness": 342},
+        {"lat": 27.5250, "lon": 84.4500, "region": "Chitwan National Park (Core)", "base_brightness": 355},
+        {"lat": 27.5800, "lon": 84.3200, "region": "Chitwan Buffer Zone", "base_brightness": 342},
+        {"lat": 28.6000, "lon": 81.3000, "region": "Bardiya National Park", "base_brightness": 348},
+        {"lat": 28.9500, "lon": 80.2000, "region": "Shuklaphanta Forest", "base_brightness": 340},
+        {"lat": 27.4500, "lon": 84.9000, "region": "Parsa National Park", "base_brightness": 352},
+        {"lat": 28.3000, "lon": 82.2000, "region": "Banke Forest Sector", "base_brightness": 345},
+        {"lat": 26.6500, "lon": 87.2500, "region": "Koshi Tappu Region", "base_brightness": 339},
     ]
     
     for day in range(days_back):
@@ -196,6 +309,12 @@ with st.sidebar:
     )
     
     st.markdown("---")
+    with st.sidebar.expander("🛠️ Admin Tools"):
+        st.warning("This will clear all live data.")
+        if st.button("Clear All Alerts & Missions", use_container_width=True):
+            reset_database()
+            st.success("Database cleared!")
+            st.rerun()
     st.markdown("### 📊 Data Stats")
     st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}")
 
@@ -253,84 +372,84 @@ try:
         """, unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
+
     
     # Tabs
     tab1, tab2, tab3, tab4 = st.tabs(["🗺️ Live Map", "⚠️ Active Alerts", "📊 Timeline Analytics", "🔬 Model Testing"])
     
     with tab1:
         st.markdown("### 🌍 Global Hotspot Detection Map")
-        st.caption("Interactive map showing detected fire hotspots. Hover over markers for details.")
+        st.caption("Interactive map showing detected fire hotspots and active deployments.")
         
+        # CALL THE CORRECT NAME HERE
         if len(df_filtered) > 0:
-            # Add severity info
-            df_filtered['severity'], df_filtered['color'] = zip(*df_filtered['brightness'].apply(get_severity))
-            
-            # Convert hex to RGB for pydeck
-            df_filtered['color_rgb'] = df_filtered['color'].apply(
-                lambda x: [int(x[1:3], 16), int(x[3:5], 16), int(x[5:7], 16), 200]
-            )
-            
-            # Calculate center
-            center_lat = df_filtered['latitude'].mean()
-            center_lon = df_filtered['longitude'].mean()
-            
-            # Create PyDeck map
-            view_state = pdk.ViewState(
-                latitude=center_lat,
-                longitude=center_lon,
-                zoom=3,
-                pitch=0,
-            )
-            
-            layer = pdk.Layer(
-                'ScatterplotLayer',
-                data=df_filtered,
-                get_position='[longitude, latitude]',
-                get_color='color_rgb',
-                get_radius='brightness * 100',
-                pickable=True,
-                auto_highlight=True,
-            )
-            
-            tooltip = {
-                "html": "<b>🔥 Fire Detected</b><br/>"
-                        "<b>Location:</b> {region}<br/>"
-                        "<b>Brightness:</b> {brightness}K<br/>"
-                        "<b>Confidence:</b> {confidence}%<br/>"
-                        "<b>Severity:</b> {severity}<br/>"
-                        "<b>Time:</b> {acq_date} {acq_time}",
-                "style": {"backgroundColor": "#2d5016", "color": "white", "padding": "10px"}
-            }
-            
-            deck = pdk.Deck(
-                layers=[layer],
-                initial_view_state=view_state,
-                tooltip=tooltip,
-                map_style=None,
-            )
-            
-            st.pydeck_chart(deck, use_container_width=True)
-            
-            # Legend
-            st.markdown("#### 🎨 Severity Legend")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.markdown("🔴 **HIGH** - Brightness ≥ 360K")
-            with col2:
-                st.markdown("🟡 **MEDIUM** - Brightness 340-360K")
-            with col3:
-                st.markdown("🟢 **LOW** - Brightness < 340K")
+            live_map_fragment(df_filtered)
         else:
             st.warning("⚠️ No hotspots detected matching current filters.")
-            st.info("Try adjusting the confidence threshold or time range in the sidebar.")
-    
-    with tab2:
-        st.markdown("### 🚨 Critical Fire Alerts")
-        st.caption("Most severe fires detected, sorted by brightness temperature")
+
+        # Legend (Static, stays below the map)
+        st.markdown("---")
+        l1, l2, l3, l4 = st.columns(4)
+        l1.markdown("🔴 **High Risk**")
+        l2.markdown("🟡 **Medium Risk**")
+        l3.markdown("🟢 **Low Risk**")
+        l4.markdown("🔵 **Ranger Deployed**")
         
-        if len(df_filtered) > 0:
+    with tab2:
+        st.markdown("### 🚨 Critical Incident Control")
+        st.caption("Manage AI detections and high-severity satellite hotspots.")
+
+        # 1. Fetch AI Alerts from SQLite
+        conn = get_db_connection()
+        # We fetch everything that isn't 'Resolved'
+        db_alerts = pd.read_sql_query("SELECT * FROM alerts WHERE status != 'Resolved' ORDER BY timestamp DESC", conn)
+        conn.close()
+
+        # 2. Combine with Satellite Alerts (High Severity Only)
+        # We filter your 'df_filtered' for brightness >= 340 to keep Tab 2 focused on action
+        sat_alerts = df_filtered[df_filtered['brightness'] >= 340].copy()
+        
+        # 3. Display AI Alerts First (Priority)
+        if not db_alerts.empty:
+            st.markdown("#### 🤖 AI Detections (Vision/Audio)")
+            for idx, row in db_alerts.iterrows():
+                # Color coding based on status
+                status_color = "#3b82f6" if row['status'] == 'Dispatched' else "#ef4444"
+                
+                with st.container():
+                    st.markdown(f"""
+                    <div style='background: #f8fafc; padding: 1.2rem; border-radius: 10px; margin: 0.8rem 0; 
+                                border-left: 5px solid {status_color}; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>
+                        <div style='display: flex; justify-content: space-between;'>
+                            <div>
+                                <h4 style='margin:0; color: #1e293b;'>🔥 {row['incident_type']} in {row['region']}</h4>
+                                <p style='margin:0; color: #64748b; font-size: 0.85rem;'>Detected via {row['source']} • {row['timestamp']}</p>
+                            </div>
+                            <span style='background: {status_color}; color: white; padding: 2px 10px; border-radius: 12px; font-size: 0.75rem;'>
+                                {row['status'].upper()}
+                            </span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    c1, c2, c3 = st.columns([1, 1, 2])
+                    with c1:
+                        if row['status'] == 'New':
+                            if st.button(f"🚀 Deploy", key=f"ai_dep_{row['id']}"):
+                                dispatch_ranger(row['id'], row['latitude'], row['longitude'])
+                                st.rerun()
+                    with c2:
+                        if st.button(f"✅ Resolve", key=f"ai_res_{row['id']}"):
+                            update_alert_status(row['id'], 'Resolved')
+                            st.rerun()
+
+        st.markdown("---")
+
+        # 4. Display Satellite Alerts (Your existing UI logic, but with functional buttons)
+        if not sat_alerts.empty:
+            st.markdown("#### 🛰️ Satellite Hotspots")
             # Sort by brightness
-            alerts = df_filtered.sort_values('brightness', ascending=False).head(15)
+            alerts = sat_alerts.sort_values('brightness', ascending=False).head(10)
             
             for idx, row in alerts.iterrows():
                 severity, color = get_severity(row['brightness'])
@@ -341,48 +460,42 @@ try:
                                 border-left: 5px solid {color}; box-shadow: 0 2px 4px rgba(45,80,22,0.15);'>
                         <div style='display: flex; justify-content: space-between; align-items: start;'>
                             <div style='flex: 1;'>
-                                <h4 style='margin: 0 0 0.5rem 0; color: #2d5016; font-size: 1.1rem;'>
-                                    📍 {row['region']}
-                                </h4>
-                                <p style='margin: 0; color: #5a7a52; font-size: 0.9rem;'>
-                                    🕐 Detected: {row['acq_date']} at {row['acq_time']} UTC
-                                </p>
+                                <h4 style='margin: 0 0 0.5rem 0; color: #2d5016; font-size: 1.1rem;'>📍 {row['region']}</h4>
+                                <p style='margin: 0; color: #5a7a52; font-size: 0.9rem;'>🕐 Detected: {row['acq_date']} at {row['acq_time']} UTC</p>
                                 <div style='margin-top: 1rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;'>
-                                    <div>
-                                        <div style='color: #6b8e5f; font-size: 0.8rem; margin-bottom: 0.25rem;'>Brightness</div>
-                                        <div style='font-weight: 600; color: #2d5016; font-size: 1.1rem;'>{row['brightness']:.1f}K</div>
-                                    </div>
-                                    <div>
-                                        <div style='color: #6b8e5f; font-size: 0.8rem; margin-bottom: 0.25rem;'>Confidence</div>
-                                        <div style='font-weight: 600; color: #2d5016; font-size: 1.1rem;'>{row['confidence']}%</div>
-                                    </div>
-                                    <div>
-                                        <div style='color: #6b8e5f; font-size: 0.8rem; margin-bottom: 0.25rem;'>Coordinates</div>
-                                        <div style='font-weight: 600; color: #2d5016; font-size: 0.9rem;'>{row['latitude']:.3f}°, {row['longitude']:.3f}°</div>
-                                    </div>
+                                    <div><div style='color: #6b8e5f; font-size: 0.8rem;'>Brightness</div><div style='font-weight: 600;'>{row['brightness']:.1f}K</div></div>
+                                    <div><div style='color: #6b8e5f; font-size: 0.8rem;'>Confidence</div><div style='font-weight: 600;'>{row['confidence']}%</div></div>
+                                    <div><div style='color: #6b8e5f; font-size: 0.8rem;'>Lat/Lon</div><div style='font-weight: 600;'>{row['latitude']:.2f}, {row['longitude']:.2f}</div></div>
                                 </div>
                             </div>
-                            <div style='margin-left: 1rem;'>
-                                <span style='background: {color}; color: white; padding: 0.4rem 0.8rem; 
-                                             border-radius: 16px; font-size: 0.85rem; font-weight: 600; white-space: nowrap;'>
-                                    {severity} RISK
-                                </span>
-                            </div>
+                            <span style='background: {color}; color: white; padding: 0.4rem 0.8rem; border-radius: 16px; font-size: 0.85rem;'>{severity} RISK</span>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Action buttons
                     col1, col2, col3 = st.columns([1, 1, 4])
                     with col1:
-                        if st.button("📊 Details", key=f"detail_{idx}"):
-                            st.info(f"Showing detailed analysis for {row['region']}")
-                    with col2:
-                        if st.button("🚁 Deploy", key=f"deploy_{idx}"):
-                            st.success(f"Alert sent to nearest ranger station!")
-        else:
-            st.warning("⚠️ No alerts matching current filters.")
-    
+                        if st.button("🚁 Deploy", key=f"sat_dep_{idx}"):
+                            # 1. Create a 'Real' alert in the DB from this Mock Hotspot
+                            conn = get_db_connection()
+                            c = conn.cursor()
+                            c.execute('''INSERT INTO alerts (source, incident_type, confidence, latitude, longitude, region, status)
+                                        VALUES (?, ?, ?, ?, ?, ?, ?)''', 
+                                    ("Satellite", "Wildfire", row['confidence'], row['latitude'], row['longitude'], row['region'], "Dispatched"))
+                            
+                            alert_id = c.lastrowid # Get the ID of the fire we just saved
+                            
+                            # 2. Create the Deployment entry
+                            c.execute("INSERT INTO deployments (alert_id, latitude, longitude, ranger_name) VALUES (?, ?, ?, ?)",
+                                    (alert_id, row['latitude'], row['longitude'], "Nepal Ranger Unit 1"))
+                            
+                            conn.commit()
+                            conn.close()
+                            
+                            st.success(f"Units Dispatched to {row['region']}!")
+                            st.rerun()
+                        
+        
     with tab3:
         st.markdown("### 📈 Temporal Analysis")
         
@@ -431,9 +544,8 @@ try:
 
     with tab4:
         st.markdown("### 🔬 Custom Data Prediction")
-        st.caption("Upload specific media types to test our specialized AI models.")
+        st.caption("Upload specific media types to test our specialized AI models and log detections to the live map.")
 
-        # Create three columns for the three data types
         col_img, col_vid, col_aud = st.columns(3)
 
         with col_img:
@@ -444,11 +556,20 @@ try:
                 if st.button("Run Vision Model (Img)", use_container_width=True):
                     with st.spinner("Analyzing pixels..."):
                         score, label, result_img = run_vision_inference(img_file, is_video=False)
-                        # Display the image WITH bounding boxes
                         st.image(result_img, caption=f"Detection Result: {label}", use_container_width=True)
-                        if score > 0:
-                            st.metric("Primary Confidence", f"{score:.1%}")
-                            st.success(f"Detected: {label}")
+                        
+                        if score > 0.4: # Only log if it's a confident detection
+                            # 📍 Log to Database
+                            log_detection(
+                                source="Vision AI", 
+                                inc_type=label, 
+                                conf=score, 
+                                lat=27.52, # In a real app, these come from EXIF data or camera GPS
+                                lon=84.45, 
+                                region="Chitwan Sector A"
+                            )
+                            st.success(f"🚨 {label} logged to map!")
+                            st.balloons()
                         else:
                             st.warning("No threats detected above threshold.")
 
@@ -459,9 +580,11 @@ try:
                 st.video(vid_file)
                 if st.button("Run Vision Model (Vid)", use_container_width=True):
                     with st.spinner("Scanning frames..."):
-                        score, label = run_vision_inference(vid_file, is_video=True)
+                        score, label, _ = run_vision_inference(vid_file, is_video=True)
                         st.metric("Confidence", f"{score:.1%}")
-                        st.write(f"**Result:** {label}")
+                        if score > 0.5:
+                            log_detection("Vision AI (Vid)", label, score, 27.58, 84.30, "Western Buffer Zone")
+                            st.success("Video event logged!")
 
         with col_aud:
             st.subheader("🔊 Audio Input")
@@ -472,8 +595,13 @@ try:
                     with st.spinner("Analyzing frequencies..."):
                         score, label = run_audio_inference(aud_file)
                         st.metric("Confidence", f"{score:.1%}")
-                        st.write(f"**Result:** {label}")
-
+                        
+                        if score > 0.5 and label != 'natural sound':
+                            # 📍 Log to Database
+                            log_detection("Audio AI", label, score, 27.60, 84.55, "Narayani Riverbank")
+                            st.error(f"⚠️ {label.upper()} DETECTED! Alerting Rangers.")
+                        else:
+                            st.write(f"**Result:** {label}")
         st.markdown("---")
         st.info("💡 **Note:** The `type` parameter in the uploader strictly prevents users from uploading incorrect formats (e.g., an MP3 will not be accepted in the Image section).")
     # comment
