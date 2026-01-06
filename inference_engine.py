@@ -32,7 +32,7 @@ custom_dict = {'preprocess_input': preprocess_input}
 
 def load_vision_model():
     base_path = os.path.dirname(os.path.abspath(__file__))
-    model_path = os.path.join(base_path, 'models', 'best.pt')
+    model_path = os.path.join(base_path, 'models', 'best_v2.pt')
     return YOLO(model_path)
 
 def load_audio_model():
