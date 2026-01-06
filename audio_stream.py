@@ -140,6 +140,6 @@ def get_status():
 
 if __name__=="__main__":
     threading.Thread(target=get_audio_inference,daemon=True).start()
-    app.run(host="0.0.0.0",port=1235,threaded=True)
+    app.run(host="0.0.0.0",port=5000,threaded=True)
 
     

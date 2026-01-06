@@ -58,5 +58,5 @@ Thumbs.db
 
 .venv/
 venv/
-
+*.db
 environment_py310

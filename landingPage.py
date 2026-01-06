@@ -3,7 +3,7 @@ import keras
 from ultralytics import YOLO
 import os
 #dependency error to be resolved
-#Fixed balloons
+#Fixed local changes.
 # Define the custom objects mapping
 custom_dict = {
     'preprocess_input': preprocess_input
@@ -826,7 +826,7 @@ try:
             if st.button("Connect", use_container_width=True, key="audio_btn"):
                 full_ip = f"{ip_addr}:{port_num}"
                 try:
-                    resp = requests.post("http://localhost:1235/setting_audio", json={"ip": full_ip}, timeout=3)
+                    resp = requests.post("http://localhost:5000/setting_audio", json={"ip": full_ip}, timeout=3)
                     if resp.status_code == 200:
                         st.session_state.audio_connected = True
                         st.success("Audio Sensor Link Established!")
@@ -843,7 +843,7 @@ try:
         st.divider()
 
         # audio feed URL (used by browser player)
-        flask_url = "http://localhost:1235/audio_feed"
+        flask_url = "http://localhost:5000/audio_feed"
         status_box = st.empty()
         if "last_audio_label" not in st.session_state:
             st.session_state.last_audio_label = None
@@ -863,7 +863,7 @@ try:
             )
 
             try:
-                res = requests.get("http://localhost:1235/status", timeout=1).json()
+                res = requests.get("http://localhost:5000/status", timeout=1).json()
                 label = res.get("Audio_Label", "Analysing...")
                 pred = float(res.get("Audio_Prediction", 0.0))
 
@@ -926,7 +926,6 @@ try:
  
         
         st.markdown("---")
-        st.info("💡 **Note:** The `type` parameter in the uploader strictly prevents users from uploading incorrect formats (e.g., an MP3 will not be accepted in the Image section).")
     
     # comment
     # Footer
