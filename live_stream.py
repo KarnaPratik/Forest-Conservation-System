@@ -88,7 +88,7 @@ def get_audio_inference():
 
                 audio_buffer.seek(0) #this makes sure when inference runs it points back to the starting
                 try:
-                    audio_label_out,audio_prediction_out=run_audio_inference(FRAME_ARRAY=audio_buffer)
+                    audio_prediction_out,audio_label_out=run_audio_inference(FRAME_ARRAY=audio_buffer)
                 except Exception:
                     traceback.print_exc()
                     time.sleep(1.0)
