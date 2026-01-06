@@ -856,7 +856,7 @@ try:
                 status_box.info("🔌 Connect an audio sensor to start monitoring.")
                 return
 
-            # 🔊 ALWAYS render audio player (no autoplay)
+            # 🔊 ALWAYS render audio player
             st.markdown(
                 f'<audio controls src="{flask_url}" style="width:100%; margin-bottom:10px;"></audio>',
                 unsafe_allow_html=True
@@ -867,22 +867,39 @@ try:
                 label = res.get("Audio_Label", "Analysing...")
                 pred = float(res.get("Audio_Prediction", 0.0))
 
-                # initialize cache
-                if st.session_state.last_audio_label is None:
-                    st.session_state.last_audio_label = label
-                    st.session_state.last_audio_pred = pred
+                # Initialize state for logging cooldown
+                if "last_log_time" not in st.session_state:
+                    st.session_state.last_log_time = datetime.now() - timedelta(minutes=5)
 
-                # Only update CARD if values changed
-                if (
-                    label == st.session_state.last_audio_label
-                    and abs(pred - st.session_state.last_audio_pred) < 0.02
-                ):
+                # --- DATABASE LOGGING LOGIC ---
+                # Check if it's a threat and confidence is high (> 50%)
+                is_threat = str(label).lower() in ["fire", "logging", "poaching"]
+                
+                if is_threat and pred > 0.5:
+                    # Cooldown: Only log to DB if 1 minute has passed since the last log of this type
+                    time_since_last_log = datetime.now() - st.session_state.last_log_time
+                    
+                    if time_since_last_log > timedelta(minutes=1):
+                        log_detection(
+                            source="Acoustic Sensor",
+                            inc_type=label.title(),
+                            conf=pred,
+                            lat=27.9881, # Sagarmatha Region or dynamic sensor lat
+                            lon=86.9250, # Sagarmatha Region or dynamic sensor lon
+                            region="Sagarmatha Buffer Zone"
+                        )
+                        st.session_state.last_log_time = datetime.now()
+                        st.toast(f"🚨 ALERT: {label} detected and logged to Command Center!")
+
+                # --- UI UPDATE LOGIC ---
+                if (label == st.session_state.get("last_audio_label") and 
+                    abs(pred - st.session_state.get("last_audio_pred", 0)) < 0.02):
                     return
 
                 st.session_state.last_audio_label = label
                 st.session_state.last_audio_pred = pred
 
-                color = "#ef4444" if str(label).lower() in ["fire", "logging", "poaching"] else "#22c55e"
+                color = "#ef4444" if is_threat else "#22c55e"
 
                 status_box.markdown(f"""
                     <div style="
@@ -896,12 +913,13 @@ try:
                         transition: all 0.25s ease;
                     ">
                         <h3 style="margin:0;">{str(label).upper()}</h3>
-                        <div style="opacity:0.9;">Confidence: {pred:.1%}</div>
+                        <div style="opacity:0.9; font-weight:bold;">Confidence: {pred:.1%}</div>
+                        <div style="font-size:0.75rem; margin-top:5px;">{'LOGGED TO DATABASE' if is_threat else 'ENVIRONMENT SECURE'}</div>
                     </div>
                 """, unsafe_allow_html=True)
 
-            except Exception:
-                status_box.warning("Waiting for audio sensor status...")
+            except Exception as e:
+                status_box.warning(f"Waiting for audio sensor status...")
 
         # render / schedule the fragment
         audio_status_fragment()
