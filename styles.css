@@ -1,64 +1,186 @@
-/* Global Reset */
+/* ======================================================
+   GLOBAL BASE – Soft Cream Canvas
+   ====================================================== */
 .stApp {
-    background-color: #F8FAFB !important;
+    background-color: #F4F1EC !important; /* warm parchment */
+    color: #2C2F33 !important;
 }
 
-/* Dashboard Header */
+/* ======================================================
+   HEADERS
+   ====================================================== */
 .main-header {
     font-size: 2.2rem;
     font-weight: 700;
-    color: #1A1C1E;
-    margin-bottom: 0px;
+    color: #2B3A2E; /* deep olive */
+    margin-bottom: 4px;
 }
+
 .sub-header {
-    color: #616B74;
-    font-size: 1rem;
+    color: #6B756E;
+    font-size: 0.95rem;
     margin-bottom: 2rem;
 }
 
-/* Stat Cards */
+/* System live indicator */
+.system-live {
+    color: #4F8A5B;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ======================================================
+   STAT CARDS – Paper Panels
+   ====================================================== */
 .stat-box {
-    background: white !important;
-    padding: 1.2rem;
-    border-radius: 12px;
-    border: 1px solid #E9EDF0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    background: #FBFAF7 !important;
+    padding: 1.25rem;
+    border-radius: 14px;
+    border: 1px solid #E3DED6 !important;
+    box-shadow:
+        0 1px 2px rgba(0,0,0,0.04),
+        0 8px 20px rgba(0,0,0,0.03);
 }
 
 .stat-number {
-    font-size: 1.8rem;
+    font-size: 1.9rem;
     font-weight: 700;
-    color: #1A1C1E;
+    color: #243529 !important;
     display: flex;
     align-items: center;
     justify-content: space-between;
 }
 
 .stat-label {
-    color: #616B74;
-    font-size: 0.85rem;
-    font-weight: 500;
-    margin-bottom: 4px;
-}
-
-/* Sidebar Styling */
-[data-testid="stSidebar"] {
-    background-color: white !important;
-    border-right: 1px solid #E9EDF0;
-}
-
-/* Right Sidebar Alert Cards */
-.alert-card {
-    background: white;
-    padding: 1rem;
-    border-radius: 8px;
-    border: 1px solid #E9EDF0;
-    margin-bottom: 12px;
-}
-
-.badge {
-    font-size: 0.7rem;
-    padding: 2px 8px;
-    border-radius: 4px;
+    color: #7A857C;
+    font-size: 0.75rem;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+}
+
+/* Delta indicator */
+.delta-badge {
+    font-size: 0.7rem;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(79, 138, 91, 0.12);
+    color: #4F8A5B;
+}
+
+/* ======================================================
+   SIDEBAR – Linen Texture Feel
+   ====================================================== */
+[data-testid="stSidebar"] {
+    background-color: #F7F4EF !important;
+    border-right: 1px solid #E3DED6 !important;
+}
+
+/* Sidebar headings */
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {
+    color: #2B3A2E;
+}
+
+/* ======================================================
+   ALERT CARDS
+   ====================================================== */
+.alert-card {
+    background: #FFFFFF !important;
+    padding: 1.1rem;
+    border-radius: 12px;
+    border: 1px solid #E3DED6 !important;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+}
+
+/* Alert text */
+.alert-title {
+    color: #2B3A2E !important;
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.alert-desc {
+    color: #6B756E !important;
+    font-size: 0.85rem;
+    margin-top: 4px;
+}
+
+/* ======================================================
+   BADGES – Muted Severity Language
+   ====================================================== */
+.badge {
+    font-size: 0.65rem;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Severity */
+.badge-critical {
+    background: rgba(190, 45, 45, 0.12) !important;
+    color: #8E2B2B !important;
+    border: 1px solid rgba(190, 45, 45, 0.25);
+}
+
+.badge-warning {
+    background: rgba(199, 137, 34, 0.15) !important;
+    color: #8A5A18 !important;
+    border: 1px solid rgba(199, 137, 34, 0.25);
+}
+
+.badge-success {
+    background: rgba(79, 138, 91, 0.14) !important;
+    color: #356B42 !important;
+    border: 1px solid rgba(79, 138, 91, 0.25);
+}
+
+/* ======================================================
+   STREAMLIT WIDGET OVERRIDES
+   ====================================================== */
+
+/* Buttons */
+.stButton > button {
+    background: #4F8A5B;
+    color: #FFFFFF;
+    border-radius: 10px;
+    padding: 0.45rem 1.1rem;
+    font-weight: 600;
+    border: none;
+}
+
+.stButton > button:hover {
+    background: #3E724A;
+}
+
+/* Select / Input */
+.stSelectbox div[data-baseweb="select"],
+.stTextInput input {
+    background-color: #FBFAF7 !important;
+    border-color: #DAD4CA !important;
+    color: #2C2F33 !important;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab"] {
+    font-weight: 600;
+    color: #6B756E;
+}
+
+.stTabs [aria-selected="true"] {
+    color: #2B3A2E !important;
+}
+
+/* Dataframes */
+[data-testid="stDataFrame"] {
+    background: #FFFFFF;
+    border-radius: 12px;
+    border: 1px solid #E3DED6;
 }

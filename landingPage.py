@@ -281,7 +281,7 @@ def live_map_fragment(satellite_df):
             data=satellite_df,
             get_position='[longitude, latitude]',
             get_color=[220, 38, 38, 120], # Red with transparency
-            get_radius=10000,
+            get_radius=5000,
         ))
 
     # LAYER 2: AI Detections from DB (Purple/Orange)
@@ -291,7 +291,7 @@ def live_map_fragment(satellite_df):
             data=db_alerts[db_alerts['source'] != 'Satellite'],
             get_position='[longitude, latitude]',
             get_color=[180, 0, 255, 160], # Purple for AI
-            get_radius=12000,
+            get_radius=5000,
         ))
 
     # LAYER 3: THE BLUE DOTS (Active Missions)
@@ -302,13 +302,13 @@ def live_map_fragment(satellite_df):
             data=deployments,
             get_position='[longitude, latitude]',
             get_color=[0, 150, 255, 255], # Bright Solid Blue
-            get_radius=15000,             # Larger to 'contain' the red dot
+            get_radius=5000,             # Larger to 'contain' the red dot
             pickable=True
         ))
 
     st.pydeck_chart(pdk.Deck(
         layers=layers,
-        initial_view_state=pdk.ViewState(latitude=28.1, longitude=84.2, zoom=6.5, pitch=40),
+        initial_view_state=pdk.ViewState(latitude=28.1, longitude=84.2, zoom=6.5, pitch=0),
         map_style='dark'
     ))
 
