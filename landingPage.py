@@ -379,8 +379,6 @@ def get_severity(brightness):
 with st.sidebar:
     st.markdown("# 🌲 VanaRakshya")
     st.markdown("---")
-    st.markdown("### 🛰️ Data Source")
-    st.info("NASA FIRMS (VIIRS)\nNear Real-Time Detection")
     
     st.markdown("### 📅 Time Range")
     days_back = st.slider("Days of historical data", 1, 14, 7)
@@ -419,7 +417,6 @@ try:
     
     # Main header
     st.markdown('<div class="main-header">🤖VanaRakshya</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Real-time monitoring powered by NASA satellite data</div>', unsafe_allow_html=True)
     
     # Key metrics
     col1, col2, col3, col4 = st.columns(4)
@@ -523,66 +520,33 @@ try:
                     c1, c2, c3 = st.columns([1, 1, 2])
                     with c1:
                         if row['status'] == 'New':
-                            if st.button(f"🚀 Deploy", key=f"ai_dep_{row['id']}"):
-                                dispatch_ranger(row['id'], row['latitude'], row['longitude'])
+                            if st.button("🚁 Deploy", key=f"sat_dep_{idx}"):
+                            # 1. Create a 'Real' alert in the DB from this Mock Hotspot
+                                conn = get_db_connection()
+                                c = conn.cursor()
+                                c.execute('''INSERT INTO alerts (source, incident_type, confidence, latitude, longitude, region, status)
+                                            VALUES (?, ?, ?, ?, ?, ?, ?)''', 
+                                        ("Satellite", "Wildfire", row['confidence'], row['latitude'], row['longitude'], row['region'], "Dispatched"))
+                                
+                                alert_id = c.lastrowid # Get the ID of the fire we just saved
+                                
+                                # 2. Create the Deployment entry
+                                c.execute("INSERT INTO deployments (alert_id, latitude, longitude, ranger_name) VALUES (?, ?, ?, ?)",
+                                        (alert_id, row['latitude'], row['longitude'], "Nepal Ranger Unit 1"))
+                                
+                                conn.commit()
+                                conn.close()
+                                
+                                st.success(f"Units Dispatched to {row['region']}!")
                                 st.rerun()
+        
                     with c2:
                         if st.button(f"✅ Resolve", key=f"ai_res_{row['id']}"):
                             update_alert_status(row['id'], 'Resolved')
                             st.rerun()
 
         st.markdown("---")
-
-        # 4. Display Satellite Alerts (Your existing UI logic, but with functional buttons)
-        if not sat_alerts.empty:
-            st.markdown("#### 🛰️ Satellite Hotspots")
-            # Sort by brightness
-            alerts = sat_alerts.sort_values('brightness', ascending=False).head(10)
-            
-            for idx, row in alerts.iterrows():
-                severity, color = get_severity(row['brightness'])
-                
-                with st.container():
-                    st.markdown(f"""
-                    <div style='background: #f0f7ed; padding: 1.2rem; border-radius: 10px; margin: 0.8rem 0; 
-                                border-left: 5px solid {color}; box-shadow: 0 2px 4px rgba(45,80,22,0.15);'>
-                        <div style='display: flex; justify-content: space-between; align-items: start;'>
-                            <div style='flex: 1;'>
-                                <h4 style='margin: 0 0 0.5rem 0; color: #2d5016; font-size: 1.1rem;'>📍 {row['region']}</h4>
-                                <p style='margin: 0; color: #5a7a52; font-size: 0.9rem;'>🕐 Detected: {row['acq_date']} at {row['acq_time']} UTC</p>
-                                <div style='margin-top: 1rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;'>
-                                    <div><div style='color: #6b8e5f; font-size: 0.8rem;'>Brightness</div><div style='font-weight: 600;'>{row['brightness']:.1f}K</div></div>
-                                    <div><div style='color: #6b8e5f; font-size: 0.8rem;'>Confidence</div><div style='font-weight: 600;'>{row['confidence']}%</div></div>
-                                    <div><div style='color: #6b8e5f; font-size: 0.8rem;'>Lat/Lon</div><div style='font-weight: 600;'>{row['latitude']:.2f}, {row['longitude']:.2f}</div></div>
-                                </div>
-                            </div>
-                            <span style='background: {color}; color: white; padding: 0.4rem 0.8rem; border-radius: 16px; font-size: 0.85rem;'>{severity} RISK</span>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    col1, col2, col3 = st.columns([1, 1, 4])
-                    with col1:
-                        if st.button("🚁 Deploy", key=f"sat_dep_{idx}"):
-                            # 1. Create a 'Real' alert in the DB from this Mock Hotspot
-                            conn = get_db_connection()
-                            c = conn.cursor()
-                            c.execute('''INSERT INTO alerts (source, incident_type, confidence, latitude, longitude, region, status)
-                                        VALUES (?, ?, ?, ?, ?, ?, ?)''', 
-                                    ("Satellite", "Wildfire", row['confidence'], row['latitude'], row['longitude'], row['region'], "Dispatched"))
-                            
-                            alert_id = c.lastrowid # Get the ID of the fire we just saved
-                            
-                            # 2. Create the Deployment entry
-                            c.execute("INSERT INTO deployments (alert_id, latitude, longitude, ranger_name) VALUES (?, ?, ?, ?)",
-                                    (alert_id, row['latitude'], row['longitude'], "Nepal Ranger Unit 1"))
-                            
-                            conn.commit()
-                            conn.close()
-                            
-                            st.success(f"Units Dispatched to {row['region']}!")
-                            st.rerun()
-                        
+                       
         
     with tab3:
         st.markdown("### 📈 Temporal Analysis")
@@ -632,7 +596,6 @@ try:
 
     with tab4:
         st.markdown("### 🔬 Custom Data Prediction")
-        st.caption("Upload specific media types to test our specialized AI models and log detections to the live map.")
 
         col_img, col_vid, col_aud = st.columns(3)
 
@@ -652,9 +615,9 @@ try:
                                 source="Vision AI", 
                                 inc_type=label, 
                                 conf=score, 
-                                lat=27.52, # In a real app, these come from EXIF data or camera GPS
-                                lon=84.45, 
-                                region="Chitwan Sector A"
+                                lat=27.98, # In a real app, these come from EXIF data or camera GPS
+                                lon=86.92, 
+                                region="Test"
                             )
                             if label == "fire":
                                 #triggered because both agreed OR one was moderately confident
@@ -840,7 +803,7 @@ try:
     st.markdown("---")
     st.markdown("""
     <div style='text-align: center; color: #5a7a52; font-size: 0.85rem; padding: 1rem 0;'>
-        <p><strong>ForestGuard</strong> • Powered by NASA FIRMS and El Quarters (VIIRS/MODIS) • Data refreshed every 3 hours, hola ig, herya xaina aaile samma</p>
+        <p><strong>VanaRakshya</strong> • Data refreshed every 10 seconds</p>
         <p>🌍 Protecting forests through intelligent monitoring</p>
     </div>
     """, unsafe_allow_html=True)
