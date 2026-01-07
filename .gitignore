@@ -60,3 +60,4 @@ Thumbs.db
 venv/
 *.db
 environment_py310
+vanarakshya.db

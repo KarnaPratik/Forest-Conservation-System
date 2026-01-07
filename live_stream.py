@@ -88,7 +88,7 @@ def get_audio_inference():
 
                 audio_buffer.seek(0) #this makes sure when inference runs it points back to the starting
                 try:
-                    audio_prediction_out,audio_label_out=run_audio_inference(FRAME_ARRAY=audio_buffer)
+                    audio_prediction_out,audio_label_out=run_audio_inference(file_buffer=audio_buffer)
                 except Exception:
                     traceback.print_exc()
                     time.sleep(1.0)
@@ -138,16 +138,18 @@ def generate_frame():
         with lock:
             #we skip everything if the camera is not ready and everything
             if cap is None or not cap.isOpened(): #this makes sure no streaming occurs when not needed
+                print("Failed to read from camera frame")
+                time.sleep(1)
                 continue
             success, frame=cap.read()
 
             if not success:
                 continue #continues if it cannot extract a frame
 
-            conf_out,label_out,annotated=run_vision_inference(FRAME_ARRAY=frame)
-            if conf_out<=0.4:
-                label_out="Natural"
-            cv2.putText(
+        conf_out,label_out,annotated=run_vision_inference(FRAME_ARRAY=frame)
+        if conf_out<=0.4:
+            label_out="Natural"
+        cv2.putText(
             annotated,
             f"{label_out},{conf_out:.2f}",
             (20, 40),
@@ -161,7 +163,7 @@ def generate_frame():
             #now after getting the image we convert the frames back into the videos or the MPEG format
             
             
-
+        with lock:
             conf=conf_out
             label=label_out
             update_threat_logic()
@@ -200,4 +202,3 @@ def combined_pred():
 
 if __name__=="__main__":
     app.run(host="0.0.0.0",port=1234,threaded=True)
-
