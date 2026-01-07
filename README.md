@@ -46,15 +46,21 @@ git clone [https://github.com/KarnaPratik/Forest-Conservation-System](https://gi
 # Navigate to the project directory
 cd Forest-Conservation-System
 
+# Install dependencies
 pip install -r requirements.txt
 streamlit run landing_page.py #to run the landing page
 
+```
+```bash
 #run in separate terminal
 python audio_stream.py #flask app to receive live signal and audio run the inference
+```
 
+```bash
 
 #run in separate terminal
 python live_stream.py #flask app to recieve live video and audio signal to give bimodal prediction
 
-# Install dependencies
-pip install -r requirements.txt
+
+```
+
