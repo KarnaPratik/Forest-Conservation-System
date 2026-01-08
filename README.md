@@ -61,7 +61,7 @@ python audio_stream.py #flask app to receive live signal and audio run the infer
 #run in separate terminal
 python live_stream.py #flask app to recieve live video and audio signal to give bimodal prediction
 
-
 ```
 
+```
 
